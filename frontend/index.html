@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="FACEIT Progress — аналитика игроков FACEIT в CS2" />
+    <title>FACEIT Progress</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+    <header class="app-header">
+      <div class="app-header__inner">
+        <a class="brand" href="#/players" aria-label="FACEIT Progress, на главную">
+          <span class="brand__mark" aria-hidden="true">FP</span>
+          <span class="brand__name">FACEIT Progress</span>
+        </a>
+        <nav class="app-nav" aria-label="Основная навигация" hidden>
+          <a class="app-nav__link" href="#/players" data-nav="players">Игроки</a>
+          <a class="app-nav__link" href="#/goals" data-nav="goals">Цели</a>
+          <a class="app-nav__link" href="#/account" data-nav="account">Аккаунт</a>
+          <button class="btn btn--ghost app-nav__logout" type="button" data-action="logout">Выйти</button>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="app-main" tabindex="-1">
+      <noscript>Для работы FACEIT Progress включите JavaScript.</noscript>
+    </main>
+    <div id="live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  </body>
+</html>

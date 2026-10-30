@@ -13,6 +13,9 @@ RUN pip install .
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+# Веб-интерфейс: статические файлы, раздаются тем же процессом с того же origin
+COPY frontend ./frontend
+ENV FRONTEND_DIR=/srv/frontend
 
 # Приложение не работает от root
 RUN useradd --create-home --uid 10001 appuser

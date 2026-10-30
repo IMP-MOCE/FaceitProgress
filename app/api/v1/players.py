@@ -7,9 +7,11 @@ from app.api.deps import CurrentUser, DbSession, Faceit, OwnedPlayer
 from app.core.errors import InvalidInput
 from app.repositories import matches as matches_repo
 from app.repositories import players as players_repo
+from app.schemas.analytics import CompareOut, InsightsOut, MapsOut
 from app.schemas.common import MAP_PATTERN, problem_responses
 from app.schemas.players import PlayerCreate, PlayerOut, PlayerPage, PlayerUpdate
 from app.schemas.stats import MatchOut, MatchPage, StatsOut
+from app.services import analytics as analytics_service
 from app.services import players as players_service
 from app.services import stats as stats_service
 
@@ -136,3 +138,41 @@ def player_stats(
 ) -> StatsOut:
     _check_period(date_from, date_to)
     return stats_service.overview(db, player, map_name, date_from, date_to)
+
+
+@router.get(
+    "/{player_id}/compare",
+    summary="Сравнить последние 20 матчей с предыдущими 20",
+    description=(
+        "Группы не пересекаются; фильтр карты применяется до разбиения. "
+        "Если подходящих матчей меньше 40, status=insufficient_data и указано, сколько есть."
+    ),
+    responses=problem_responses(401, 404, 422),
+)
+def compare_samples(player: OwnedPlayer, db: DbSession, map_name: MapFilter = None) -> CompareOut:
+    return analytics_service.compare(db, player, map_name)
+
+
+@router.get(
+    "/{player_id}/maps",
+    summary="Результаты по картам с размером выборки",
+    responses=problem_responses(401, 404, 422),
+)
+def map_stats(
+    player: OwnedPlayer, db: DbSession, date_from: DateFrom = None, date_to: DateTo = None
+) -> MapsOut:
+    _check_period(date_from, date_to)
+    return analytics_service.maps(db, player, date_from, date_to)
+
+
+@router.get(
+    "/{player_id}/insights",
+    summary="Сводка и рекомендации по правилам A01–A03",
+    description=(
+        "Не более трёх наблюдений в порядке A01, A02, A03. Каждое содержит значения, "
+        "период, размер выборки, ограничение вывода, действие и исходные матчи."
+    ),
+    responses=problem_responses(401, 404),
+)
+def player_insights(player: OwnedPlayer, db: DbSession) -> InsightsOut:
+    return analytics_service.insights(db, player)

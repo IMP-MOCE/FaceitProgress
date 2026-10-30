@@ -1,10 +1,12 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import Conflict, InvalidCredentials
-from app.core.security import hash_password, verify_password
+from app.core.security import TokenClaims, hash_password, verify_password
 from app.models import User
-from app.repositories import users
+from app.repositories import tokens, users
 
 EMAIL_TAKEN = "Пользователь с таким email уже зарегистрирован"
 
@@ -35,4 +37,11 @@ def authenticate(db: Session, email: str, password: str) -> User:
 def delete_account(db: Session, user: User) -> None:
     # Игроки, матчи и цели удаляются каскадом (ON DELETE CASCADE)
     db.delete(user)
+    db.commit()
+
+
+def logout(db: Session, claims: TokenClaims) -> None:
+    """Отзывает текущий токен; заодно удаляет записи об уже истёкших токенах"""
+    tokens.purge_expired(db, datetime.now(UTC))
+    tokens.revoke(db, claims.jti, claims.user_id, claims.expires_at)
     db.commit()

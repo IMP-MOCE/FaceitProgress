@@ -1,0 +1,15 @@
+{
+  "name": "faceit-progress-frontend",
+  "private": true,
+  "type": "module",
+  "description": "Линтер интерфейса FACEIT Progress (сам интерфейс - статические ES-модули без сборки)",
+  "scripts": {
+    "lint": "eslint frontend && prettier --check \"frontend/**/*.{js,css,html}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2"
+  }
+}

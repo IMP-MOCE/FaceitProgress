@@ -11,3 +11,6 @@ coverage.xml
 reports
 tests
 docs
+node_modules
+package.json
+eslint.config.js

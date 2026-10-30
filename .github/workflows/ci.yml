@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Линтеры и типы
+    name: Линтеры и типы (backend)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,9 +32,26 @@ jobs:
       - name: pip-audit (уязвимые зависимости, OWASP A06)
         run: pip-audit --skip-editable
 
+  lint-frontend:
+    name: Линтеры (frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Установка ESLint и Prettier
+        run: npm install --no-audit --no-fund
+      - name: ESLint (в т.ч. запрет innerHTML/eval - защита от XSS)
+        run: npx eslint frontend
+      - name: Prettier
+        run: npx prettier --check "frontend/**/*.{js,css,html}"
+      - name: npm audit (уязвимые зависимости инструментов)
+        run: npm audit --audit-level=high
+
   test:
-    name: Тесты
-    needs: lint
+    name: Тесты (unit, API, контракт)
+    needs: [lint, lint-frontend]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -87,9 +104,46 @@ jobs:
           name: test-reports
           path: reports/
 
+  e2e:
+    name: Сквозные тесты интерфейса (Playwright)
+    needs: [lint, lint-frontend]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: faceit
+          POSTGRES_PASSWORD: faceit
+          POSTGRES_DB: faceit_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faceit"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://faceit:faceit@localhost:5432/faceit_test
+      JWT_SECRET: ci-test-secret-not-for-production-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[dev,e2e]"
+      - run: python -m playwright install --with-deps chromium
+      - name: pytest -m e2e
+        run: pytest -m e2e tests/e2e --junitxml=reports/e2e-junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: reports/
+
   docker:
     name: Сборка образа
-    needs: test
+    needs: [test, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read

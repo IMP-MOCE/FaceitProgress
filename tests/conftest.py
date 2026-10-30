@@ -23,7 +23,7 @@ from app.db.session import get_engine, get_sessionmaker
 from app.main import create_app
 
 ROOT = Path(__file__).resolve().parent.parent
-TABLES = "goal_snapshot_matches, goals, matches, players, users"
+TABLES = "revoked_tokens, goal_snapshot_matches, goals, matches, players, users"
 PASSWORD = "correct-horse-battery"
 
 

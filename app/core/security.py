@@ -1,6 +1,7 @@
 """Хеширование паролей (Argon2id) и выпуск/проверка JWT."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -44,21 +45,40 @@ def create_access_token(user_id: int, settings: Settings) -> tuple[str, int]:
     return token, int(ttl.total_seconds())
 
 
-def decode_access_token(token: str, settings: Settings) -> int | None:
-    """Возвращает id пользователя или None, если токен невалиден."""
+@dataclass(frozen=True)
+class TokenClaims:
+    user_id: int
+    jti: str
+    expires_at: datetime
+
+
+def decode_token_claims(token: str, settings: Settings) -> TokenClaims | None:
+    """Проверяет подпись, срок и тип токена. None - токен невалиден"""
     try:
         payload = jwt.decode(
             token,
             settings.jwt_secret.get_secret_value(),
             # Алгоритм задан явно: токены с alg=none или другим алгоритмом отклоняются
             algorithms=[JWT_ALGORITHM],
-            options={"require": ["exp", "iat", "sub"]},
+            options={"require": ["exp", "iat", "sub", "jti"]},
         )
     except jwt.PyJWTError:
         return None
     if payload.get("type") != TOKEN_TYPE:
         return None
     try:
-        return int(payload["sub"])
+        user_id = int(payload["sub"])
     except (TypeError, ValueError):
         return None
+    jti = payload["jti"]
+    if not isinstance(jti, str) or not jti:
+        return None
+    return TokenClaims(
+        user_id=user_id, jti=jti, expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC)
+    )
+
+
+def decode_access_token(token: str, settings: Settings) -> int | None:
+    """Возвращает id пользователя или None, если токен невалиден."""
+    claims = decode_token_claims(token, settings)
+    return None if claims is None else claims.user_id

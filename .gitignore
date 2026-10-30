@@ -16,3 +16,6 @@ reports/
 
 .idea/
 .vscode/
+
+node_modules/
+playwright-report/

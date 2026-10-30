@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "faceit-progress-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Backend FACEIT Progress: аналитика игроков FACEIT в CS2"
 requires-python = ">=3.12"
 dependencies = [
@@ -29,6 +29,10 @@ dev = [
     "mypy>=1.13",
     "pip-audit>=2.7",
     "pre-commit>=4.0",
+]
+# Сквозные тесты интерфейса; браузер ставится отдельно: python -m playwright install chromium
+e2e = [
+    "playwright>=1.48",
 ]
 
 [tool.setuptools.packages.find]
@@ -68,7 +72,9 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+# e2e по умолчанию не запускаются: им нужен браузер. Запуск: pytest -m e2e tests/e2e
+addopts = "-ra -m 'not e2e'"
+markers = ["e2e: сквозные тесты интерфейса в браузере (Playwright)"]
 
 [tool.coverage.run]
 source = ["app"]

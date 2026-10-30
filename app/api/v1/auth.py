@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.deps import AppSettings, CurrentUser, DbSession, get_login_limiter
+from app.api.deps import AppSettings, CurrentUser, DbSession, TokenClaimsDep, get_login_limiter
 from app.core.errors import TooManyRequests
 from app.core.rate_limit import SlidingWindowLimiter
 from app.core.security import create_access_token
@@ -46,6 +46,18 @@ def login(
     user = auth_service.authenticate(db, body.email, body.password)
     token, expires_in = create_access_token(user.id, settings)
     return TokenResponse(access_token=token, expires_in=expires_in)
+
+
+@router.post(
+    "/auth/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Выход: отзывает текущий токен",
+    description="После выхода тот же токен получает 401, даже если срок его жизни не истёк.",
+    responses=problem_responses(401),
+)
+def logout(user: CurrentUser, claims: TokenClaimsDep, db: DbSession) -> Response:
+    auth_service.logout(db, claims)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/users/me", summary="Текущий пользователь", responses=problem_responses(401))

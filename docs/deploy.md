@@ -31,7 +31,10 @@ docker compose up --build -d
 curl http://localhost:8000/api/v1/health
 ```
 
-Ответ: `{"status":"ok"}`. Swagger UI: http://localhost:8000/docs
+Ответ: `{"status":"ok"}`.
+
+- Веб-интерфейс: http://localhost:8000/
+- Swagger UI: http://localhost:8000/docs
 
 Демонстрационный аккаунт с готовым примером прогресса цели:
 
@@ -51,6 +54,15 @@ docker compose down
 docker compose down -v
 ```
 
+## Проверка развёрнутого экземпляра
+
+```bash
+python scripts/load_test.py --url http://localhost:8000
+```
+
+Скрипт создаёт временного пользователя, измеряет первый импорт игрока и p95 открытия обзора при
+20 одновременных пользователях (NFR02). Результат - `reports/load.json`.
+
 ## Вариант 2. Локальная разработка
 
 ```bash
@@ -64,6 +76,15 @@ uvicorn app.main:app --reload
 ```
 
 На Linux/macOS venv активируется командой `source .venv/bin/activate`.
+Интерфейс открывается на том же адресе: http://localhost:8000/. Сборка не нужна: после правки
+файлов в `frontend/` достаточно обновить страницу.
+
+Линтеры интерфейса (нужен Node.js 20+):
+
+```bash
+npm install
+npm run lint
+```
 
 ## Переменные окружения
 
@@ -76,6 +97,8 @@ uvicorn app.main:app --reload
 | `FACEIT_API_KEY` | нет | пусто | Ключ FACEIT Data API; без него работают демо-данные |
 | `LOGIN_RATE_LIMIT` | нет | 5 | Попыток входа в минуту на IP + email |
 | `DOCS_ENABLED` | нет | true | Swagger UI и `/openapi.json` |
+| `UI_ENABLED` | нет | true | Раздавать веб-интерфейс на `/` |
+| `FRONTEND_DIR` | нет | `frontend/` в корне проекта | Каталог статических файлов интерфейса |
 | `APP_ENV` | нет | development | `development` / `test` / `production` |
 
 ## Образ из CI
@@ -97,6 +120,6 @@ docker run -d -p 8000:8000 -e JWT_SECRET=... -e DATABASE_URL=postgresql+psycopg:
 
 - Отдельный длинный `JWT_SECRET`, хранящийся в секретах окружения, а не в файле.
 - `DOCS_ENABLED=false`, `APP_ENV=production`.
-- TLS на обратном прокси (nginx, Caddy) перед сервисом.
+- TLS на обратном прокси (nginx, Caddy) перед сервисом. Интерфейс и API остаются на одном origin.
 - Свой пароль БД вместо `faceit/faceit` из docker-compose.
 - Откат: запустить образ предыдущего тега `sha-…`. Если откатывается схема - `alembic downgrade -1`.

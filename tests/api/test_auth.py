@@ -2,12 +2,16 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
+from app.models import RevokedToken
 from tests.conftest import PASSWORD, register
 
 REGISTER = "/api/v1/auth/register"
 LOGIN = "/api/v1/auth/login"
 ME = "/api/v1/users/me"
+LOGOUT = "/api/v1/auth/logout"
 
 
 def test_register_returns_user_without_password(client: TestClient) -> None:
@@ -102,6 +106,36 @@ def test_deleted_user_token_stops_working(client: TestClient) -> None:
     assert client.get(ME, headers=headers).status_code == 401
     # Email освобождается — можно зарегистрироваться заново.
     register(client, "ivan@example.com")
+
+
+def test_logout_revokes_only_current_token(client: TestClient) -> None:
+    first = register(client, "judy@example.com")
+    login = client.post(LOGIN, json={"email": "judy@example.com", "password": PASSWORD})
+    second = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    assert client.post(LOGOUT, headers=first).status_code == 204
+    response = client.get(ME, headers=first)
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Сессия завершена, войдите снова"
+    # Повторный выход отозванным токеном - тоже 401, а другая сессия продолжает работать
+    assert client.post(LOGOUT, headers=first).status_code == 401
+    assert client.get(ME, headers=second).status_code == 200
+
+
+def test_logout_purges_expired_records(client: TestClient, db: Session) -> None:
+    headers = register(client, "kate@example.com")
+    user_id = client.get(ME, headers=headers).json()["id"]
+    expired = datetime.now(UTC) - timedelta(minutes=1)
+    db.add(RevokedToken(jti="old-token", user_id=user_id, expires_at=expired))
+    db.commit()
+    assert client.post(LOGOUT, headers=headers).status_code == 204
+    db.expire_all()
+    assert db.get(RevokedToken, "old-token") is None
+    assert db.scalar(select(func.count()).select_from(RevokedToken)) == 1
+
+
+def test_logout_requires_token(client: TestClient) -> None:
+    assert client.post(LOGOUT).status_code == 401
 
 
 def test_security_headers(client: TestClient) -> None:

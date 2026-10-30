@@ -9,6 +9,7 @@ from app.core.security import (
     JWT_ALGORITHM,
     create_access_token,
     decode_access_token,
+    decode_token_claims,
     hash_password,
     verify_password,
 )
@@ -36,6 +37,19 @@ def test_token_roundtrip() -> None:
     assert decode_access_token(token, SETTINGS) == 42
 
 
+def test_claims_carry_jti_and_expiry() -> None:
+    token, expires_in = create_access_token(7, SETTINGS)
+    claims = decode_token_claims(token, SETTINGS)
+    assert claims is not None
+    assert claims.user_id == 7
+    assert len(claims.jti) == 32
+    remaining = (claims.expires_at - datetime.now(UTC)).total_seconds()
+    assert expires_in - 5 <= remaining <= expires_in
+    # Каждый токен уникален: отзыв одного не затрагивает другие сессии
+    other = decode_token_claims(create_access_token(7, SETTINGS)[0], SETTINGS)
+    assert other is not None and other.jti != claims.jti
+
+
 def _encode(
     payload: dict[str, object], secret: str = SECRET, algorithm: str = JWT_ALGORITHM
 ) -> str:
@@ -49,6 +63,7 @@ def _claims(**overrides: object) -> dict[str, object]:
         "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=5),
+        "jti": "0123456789abcdef",
     }
     claims.update(overrides)
     return claims
@@ -64,6 +79,8 @@ def _claims(**overrides: object) -> dict[str, object]:
         pytest.param(_encode(_claims(type="refresh")), id="wrong-type"),
         pytest.param(_encode(_claims(sub="admin")), id="non-numeric-sub"),
         pytest.param(_encode({"sub": "1", "type": "access"}), id="no-exp"),
+        pytest.param(_encode({k: v for k, v in _claims().items() if k != "jti"}), id="no-jti"),
+        pytest.param(_encode(_claims(jti="")), id="empty-jti"),
         pytest.param("not.a.jwt", id="garbage"),
     ],
 )

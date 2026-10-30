@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -27,6 +28,10 @@ class Settings(BaseSettings):
     login_rate_window_seconds: int = Field(default=60, ge=1)
 
     docs_enabled: bool = True
+
+    # Веб-интерфейс (каталог frontend/) раздаётся с того же origin, что и API
+    ui_enabled: bool = True
+    frontend_dir: Path = Path(__file__).resolve().parents[2] / "frontend"
 
 
 @lru_cache
